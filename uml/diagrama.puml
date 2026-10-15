@@ -1,0 +1,210 @@
+@startuml diagrama
+title AndesDrone Logistics - Diagrama de clases (PC02)
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+hide empty members
+
+package "andesdrone.modelo" {
+  class Coordenada {
+    - latitud : double
+    - longitud : double
+    + Coordenada()
+    + Coordenada(lat : double, lon : double)
+    + Coordenada(otra : Coordenada)
+    + getLatitud() : double
+    + setLatitud(latitud : double) : boolean
+    + getLongitud() : double
+    + setLongitud(longitud : double) : boolean
+    + distanciaKm(otra : Coordenada) : double
+    + toString() : String
+  }
+
+  class Paquete {
+    - codigo : String
+    - descripcion : String
+    - pesoKg : double
+    - fragil : boolean
+    - destino : Coordenada
+    + Paquete(codigo : String, descripcion : String, pesoKg : double, lat : double, lon : double)
+    + Paquete(codigo : String, descripcion : String, pesoKg : double, fragil : boolean, lat : double, lon : double)
+    + getCodigo() : String
+    + getDescripcion() : String
+    + getPesoKg() : double
+    + setPesoKg(pesoKg : double) : boolean
+    + isFragil() : boolean
+    + getDestino() : Coordenada
+    + toString() : String
+  }
+}
+
+package "andesdrone.vehiculos" {
+  interface Rastreable <<interface>> {
+    + getUbicacion() : Coordenada
+    + estadoResumido() : String {default}
+  }
+
+  interface Recargable <<interface>> {
+    + recargar(minutos : int) : void
+    + getNivelBateria() : double
+    + estadoResumido() : String {default}
+  }
+
+  interface Operable <<interface>> {
+    + estadoResumido() : String {default}
+  }
+
+  interface Asegurable <<interface>> {
+    + calcularPrima() : double
+  }
+
+  abstract class VehiculoAutonomo <<sealed>> {
+    - id : String
+    - modelo : String
+    - capacidadMaxKg : double
+    - ubicacion : Coordenada
+    # bateria : double = 100
+    # consumoPorKm : double
+    + VehiculoAutonomo(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double, lat : double, lon : double)
+    + VehiculoAutonomo(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double)
+    + {abstract} calcularCostoEntrega(distanciaKm : double, p : Paquete) : double
+    + puedeTransportar(p : Paquete) : boolean
+    # consumirBateria(porcentaje : double) : boolean
+    + mover(destino : Coordenada) : boolean
+    + mover(lat : double, lon : double) : boolean
+    + getUbicacion() : Coordenada
+    + getNivelBateria() : double
+    + recargar(minutos : int) : void
+    + getId() : String
+    + getModelo() : String
+    + getCapacidadMaxKg() : double
+    + getConsumoPorKm() : double
+    + toString() : String
+  }
+  note top of VehiculoAutonomo
+    public abstract sealed
+    permits DronAereo, RobotTerrestre
+  end note
+
+  class DronAereo <<non-sealed>> {
+    - altitudMaxM : int
+    + DronAereo(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double, altitudMaxM : int)
+    + DronAereo(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double)
+    + getAltitudMaxM() : int
+    + setAltitudMaxM(altitudMaxM : int) : boolean
+    + calcularCostoEntrega(distanciaKm : double, p : Paquete) : double
+    + recargar(minutos : int) : void
+    + toString() : String
+  }
+
+  class DronPesado <<final>> {
+    + DronPesado(id : String, modelo : String, capacidadMaxKg : double, altitudMaxM : int)
+    + calcularCostoEntrega(distanciaKm : double, p : Paquete) : double
+    + calcularPrima() : double
+  }
+
+  abstract class RobotTerrestre <<sealed>> {
+    - velocidadMaxKmH : double
+    + RobotTerrestre(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double, velocidadMaxKmH : double)
+    + getVelocidadMaxKmH() : double
+    + setVelocidadMaxKmH(velocidadMaxKmH : double) : boolean
+    + toString() : String
+  }
+  note bottom of RobotTerrestre
+    abstract sealed
+    permits RobotRuedas, RobotOruga
+  end note
+
+  class RobotRuedas <<final>> {
+    + RobotRuedas(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double, velocidadMaxKmH : double)
+    + calcularCostoEntrega(distanciaKm : double, p : Paquete) : double
+  }
+
+  class RobotOruga <<final>> {
+    + RobotOruga(id : String, modelo : String, capacidadMaxKg : double, consumoPorKm : double, velocidadMaxKmH : double)
+    + calcularCostoEntrega(distanciaKm : double, p : Paquete) : double
+    + puedeTransportar(p : Paquete) : boolean
+    + calcularPrima() : double
+  }
+}
+
+package "andesdrone.gestion" {
+  class CalculadoraRutas {
+    - CalculadoraRutas()
+    + {static} bateriaNecesaria(v : VehiculoAutonomo, destino : Coordenada) : double
+    + {static} esViable(v : VehiculoAutonomo, p : Paquete) : boolean
+    + {static} costoEstimado(v : VehiculoAutonomo, p : Paquete) : double
+  }
+
+  class Flota {
+    - nombre : String
+    - vehiculos : VehiculoAutonomo[]
+    - cantidad : int
+    + Flota(nombre : String, capacidad : int)
+    + agregarVehiculo(v : VehiculoAutonomo) : boolean
+    + buscarPorId(id : String) : VehiculoAutonomo
+    + asignarMejorVehiculo(p : Paquete) : VehiculoAutonomo
+    + totalPrimasSeguro() : double
+    + reporte() : String
+  }
+
+  class Entrega {
+    - codigo : String
+    - paquete : Paquete
+    - vehiculo : VehiculoAutonomo
+    - distanciaKm : double
+    - costo : double
+    - completada : boolean
+    + Entrega(codigo : String, paquete : Paquete, vehiculo : VehiculoAutonomo)
+    + ejecutar() : boolean
+    + getCodigo() : String
+    + getPaquete() : Paquete
+    + getVehiculo() : VehiculoAutonomo
+    + getDistanciaKm() : double
+    + getCosto() : double
+    + isCompletada() : boolean
+    + toString() : String
+  }
+}
+
+package "andesdrone.app" {
+  class Main {
+    + {static} main(args : String[]) : void
+  }
+}
+
+' ---------- Herencia entre interfaces y realización ----------
+Operable --|> Rastreable
+Operable --|> Recargable
+VehiculoAutonomo ..|> Operable
+DronPesado ..|> Asegurable
+RobotOruga ..|> Asegurable
+
+' ---------- Generalización ----------
+DronAereo --|> VehiculoAutonomo
+RobotTerrestre --|> VehiculoAutonomo
+DronPesado --|> DronAereo
+RobotRuedas --|> RobotTerrestre
+RobotOruga --|> RobotTerrestre
+
+' ---------- Composición ----------
+VehiculoAutonomo "1" *-- "1" Coordenada : ubicacion
+Paquete "1" *-- "1" Coordenada : destino
+
+' ---------- Agregación ----------
+Flota "1" o-- "0..*" VehiculoAutonomo : vehiculos
+Entrega "0..*" o-- "1" VehiculoAutonomo : vehiculo
+
+' ---------- Asociación unidireccional ----------
+Entrega "1" --> "1" Paquete : paquete
+
+' ---------- Dependencias ----------
+CalculadoraRutas ..> VehiculoAutonomo
+CalculadoraRutas ..> Paquete
+CalculadoraRutas ..> Coordenada
+Flota ..> Paquete
+Flota ..> CalculadoraRutas : <<use>> static
+
+@enduml
